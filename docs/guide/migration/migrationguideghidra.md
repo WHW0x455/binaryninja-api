@@ -17,7 +17,11 @@ It's worth digging into Binary Ninja's [settings](../settings.md) and seeing wha
 
 ## Keybindings
 
-Binary Ninja's keybindings are very different from Ghidra. Thankfully, [Binary Ninja's action system](https://binary.ninja/2024/02/15/command-palette.html) allows you to easily find actions and view the keybindings extremely easily. It'll also save you from digging through unfamiliar right-click menus while helping you learn any new keybindings. All actions can have their keybinding set, changed, or removed in the [keybindings menu](../index.md#default-hotkeys).
+To quickly set up Ghidra-like keybindings, open the Welcome Window from the Help menu (Help → Show Welcome Window) and select that you're migrating from Ghidra. The onboarding wizard will offer to apply Ghidra-style keybindings for you.
+
+Alternatively, you can manually replace your [keybindings](../index.md#custom-hotkeys) file in your [user folder](../index.md#user-folder) with [this file](../../files/ghidra-keybindings.json) to have the most seamless experience when changing to Binary Ninja.
+
+Binary Ninja's default keybindings are very different from Ghidra. Thankfully, [Binary Ninja's action system](https://binary.ninja/2024/02/15/command-palette.html) allows you to easily find actions and view the keybindings extremely easily. It'll also save you from digging through unfamiliar right-click menus while helping you learn any new keybindings. All actions can have their keybinding set, changed, or removed in the [keybindings menu](../index.md#default-hotkeys).
 
 Some of the most useful default keybindings are as follows:
 

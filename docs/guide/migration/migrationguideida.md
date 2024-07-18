@@ -31,7 +31,11 @@ The following data will be imported:
 
 ## Keybindings
 
-Most of the keybindings you're used to are the same. Any "actions" (renaming, setting types, opening cross-references, etc.) you might want to perform can be found in the [command palette](../index.md#command-palette), which will save you from digging through unfamiliar right-click menus and help you learn any new keybindings. You can even [add your own actions](https://binary.ninja/2024/02/15/command-palette.html#how-do-i-register-actions-with-the-command-palette-myself) with ease. All actions can have their keybinding set, changed, or removed in the [keybindings menu](../index.md#default-hotkeys).
+To quickly set up IDA-like keybindings, open the Welcome Window from the Help menu (Help → Show Welcome Window) and select that you're migrating from IDA. The onboarding wizard will offer to apply IDA-style keybindings for you.
+
+Alternatively, you can manually replace your [keybindings](../index.md#custom-hotkeys) file in your [user folder](../index.md#user-folder) with [this file](../../files/ida-keybindings.json) to have the most seamless experience when changing to Binary Ninja.
+
+Most of the default keybindings you're used to are the same. Any "actions" (renaming, setting types, opening cross-references, etc) you might want to perform can be found in the [command palette](../index.md#command-palette), which will save you from digging through unfamiliar right-click menus and help you learn any new keybindings. You can even [add your own actions](https://binary.ninja/2024/02/15/command-palette.html#how-do-i-register-actions-with-the-command-palette-myself) with ease. All actions can have their keybinding set, changed, or removed in the [keybindings menu](../index.md#default-hotkeys).
 
 Some major exceptions are:
 
