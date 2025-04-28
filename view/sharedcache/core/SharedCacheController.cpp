@@ -130,7 +130,7 @@ bool SharedCacheController::ApplyRegion(BinaryView& view, const CacheRegion& reg
 	// Loads the given region into the BinaryView and marks it as loaded.
 	// First check to make sure we haven't already loaded the region.
 	if (m_loadedRegions.find(region.start) != m_loadedRegions.end())
-		return false;
+		return true;
 
 	// Skip filtered regions, this defaults to just LINKEDIT regions.
 	if (std::regex_match(region.name, m_regionFilter))
@@ -195,10 +195,13 @@ bool SharedCacheController::ApplyImage(BinaryView& view, const CacheImage& image
 {
 	// Load all regions of an image and mark the image as loaded.
 	// NOTE: The regions lock m_loadMutex themselves, so we do not hold it up here.
-	bool loadedRegion = false;
-	for (const auto& regionStart : image.regionStarts)
-		if (ApplyRegionAtAddress(view, regionStart))
-			loadedRegion = true;
+	bool loadedRegion = IsImageLoaded(image); // TODO this API looks broken, returns false even if the image is loaded. had to return true on line 133 above
+	if (!loadedRegion)
+	{
+		for (const auto& regionStart : image.regionStarts)
+			if (ApplyRegionAtAddress(view, regionStart))
+				loadedRegion = true;
+	}
 
 	// The ApplyRegionAtAddress no longer holds the lock, we can take it now.
 	std::unique_lock<std::shared_mutex> lock(m_loadMutex);

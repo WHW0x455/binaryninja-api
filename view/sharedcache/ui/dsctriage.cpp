@@ -130,6 +130,19 @@ void DSCTriageView::loadImagesWithAddr(const std::vector<uint64_t>& addresses, b
 	});
 	QFuture<ImageList> future = QtConcurrent::run([this, controller, images, imageLoadTask]() {
 		ImageList loadedImages = {};
+
+		// Apply the regions to the view in one bulk operation.
+		this->m_data->BeginBulkAddSegments();
+		for (const auto& image : images)
+		{
+			for (const auto& regionStart : image.regionStarts)
+			{
+				if (auto cache = controller->GetRegionAt(regionStart); cache.has_value())
+					controller->ApplyRegion(*this->m_data, cache.value());
+			}
+		}
+		this->m_data->EndBulkAddSegments();
+
 		for (const auto& image : images)
 		{
 			if (imageLoadTask->IsCancelled() || QThread::currentThread()->isInterruptionRequested())
