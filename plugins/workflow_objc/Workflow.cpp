@@ -283,18 +283,20 @@ void Workflow::inlineMethodCalls(AnalysisContextRef ac)
     llil->GenerateSSAForm();
 }
 
-static constexpr auto WorkflowInfo = R"({
-  "title": "Objective-C",
-  "description": "Enhanced analysis for Objective-C code.",
-  "capabilities": []
-})";
-
 void Workflow::registerActivities()
 {
-    const auto wf = BinaryNinja::Workflow::Instance("core.function.baseAnalysis")->Clone("core.function.objectiveC");
-    wf->RegisterActivity(new BinaryNinja::Activity(
-        ActivityID::ResolveMethodCalls, &Workflow::inlineMethodCalls));
-    wf->Insert("core.function.translateTailCalls", ActivityID::ResolveMethodCalls);
+    auto workflow = BinaryNinja::Workflow::Instance("core.function.metaAnalysis")->Clone();
+    workflow->RegisterActivity(new BinaryNinja::Activity(
+    R"({
+        "name": "analysis.objectiveC.resolveMethodCalls",
+        "title" : "Objective-C Method Call Resolution",
+        "description": "This analysis step performs enhanced analysis for Objective-C code.",
+        "aliases": ["core.function.objectiveC.resolveMethodCalls"],
+        "eligibility": {
+            "auto": { "default": false }
+        }
+    })", &Workflow::inlineMethodCalls));
+    workflow->Insert("core.function.translateTailCalls", "analysis.objectiveC.resolveMethodCalls");
 
-    BinaryNinja::Workflow::RegisterWorkflow(wf, WorkflowInfo);
+    BinaryNinja::Workflow::RegisterWorkflow(workflow);
 }
