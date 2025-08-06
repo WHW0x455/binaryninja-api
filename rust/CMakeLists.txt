@@ -30,6 +30,7 @@ endif()
 
 # TODO : RUSTDOCFLAGS="--theme binja-dark.css --default-theme=binja-dark"
 add_custom_target(rust_api ALL DEPENDS ${PROJECT_BINARY_DIR}/rust_api.stamp)
+add_dependencies(rust_api binaryninjaapi)
 
 add_custom_target(rust_docs ALL DEPENDS ${PROJECT_BINARY_DIR}/target/doc)
 add_dependencies(rust_docs binaryninjaapi rust_api)
@@ -49,7 +50,7 @@ add_custom_command(
 	COMMAND ${CMAKE_COMMAND} -E env BINARYNINJADIR=${BN_INSTALL_BIN_DIR} ${RUSTUP_CHECK_COMMAND} ${CARGO_CHECK_OPTS}
 	COMMAND ${CMAKE_COMMAND} -E touch ${PROJECT_BINARY_DIR}/rust_api.stamp
 	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-	DEPENDS ${RUST_API_SOURCES} $<TARGET_FILE:binaryninjaapi>
+	DEPENDS ${RUST_API_SOURCES}
 	COMMENT "Checking Rust API"
 	VERBATIM
 )
