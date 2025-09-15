@@ -314,6 +314,7 @@ extern "C"
 	typedef struct BNConstantRenderer BNConstantRenderer;
 	typedef struct BNStringRecognizer BNStringRecognizer;
 	typedef struct BNCustomStringType BNCustomStringType;
+	typedef struct BNDatabaseObject BNDatabaseObject;
 
 	typedef struct BNRemoteFileSearchMatch
 	{
@@ -4134,6 +4135,7 @@ extern "C"
 	    BNKeyValueStore* cache, void* ctxt, BNProgressFunction progress,
 	    bool openForConfiguration, bool restoreRawView);
 	BINARYNINJACOREAPI BNDatabase* BNGetFileMetadataDatabase(BNFileMetadata* file);
+	BINARYNINJACOREAPI BNDatabaseObject* BNGetFileDatabaseObject(BNFileMetadata* file, BNDatabaseObject* parent);
 
 	// Key value store
 	BINARYNINJACOREAPI BNKeyValueStore* BNCreateKeyValueStore(void);
@@ -8860,6 +8862,14 @@ extern "C"
 		BNHighLevelILFunction* il, size_t exprIndex, BNType* type, int64_t val, uint64_t offset, BNDerivedString* out);
 	BINARYNINJACOREAPI bool BNStringRecognizerRecognizeImport(BNStringRecognizer* recognizer, BNHighLevelILFunction* il,
 		size_t exprIndex, BNType* type, int64_t val, BNDerivedString* out);
+
+	BINARYNINJACOREAPI BNDatabaseObject* BNNewDatabaseObjectReference(BNDatabaseObject* object);
+	BINARYNINJACOREAPI void BNFreeDatabaseObject(BNDatabaseObject* object);
+	BINARYNINJACOREAPI void BNFreeDatabaseObjectList(BNDatabaseObject** objects, size_t count);
+	BINARYNINJACOREAPI int BNGetDatabaseObjectType(BNDatabaseObject* object);
+	BINARYNINJACOREAPI char* BNGetDatabaseObjectName(BNDatabaseObject* object);
+	BINARYNINJACOREAPI BNDatabaseObject* BNGetDatabaseObjectParent(BNDatabaseObject* object);
+	BINARYNINJACOREAPI size_t BNGetDatabaseObjectChildren(BNDatabaseObject* object, char*** names, BNDatabaseObject*** objects);
 
 #ifdef __cplusplus
 }
