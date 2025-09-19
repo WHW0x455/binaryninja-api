@@ -3889,6 +3889,17 @@ extern "C"
 		char* stringPostfix;
 	} BNCustomStringTypeInfo;
 
+	typedef enum BNMergeStrategy
+	{
+		IgnoreMergeStrategy,
+		MergeChildrenMergeStrategy,
+		AutoResolveLeftMergeStrategy,
+		AutoResolveRightMergeStrategy,
+		UserResolveLeftMergeStrategy,
+		UserResolveRightMergeStrategy,
+		PresentConflictMergeStrategy
+	} BNMergeStrategy;
+
 	BINARYNINJACOREAPI char* BNAllocString(const char* contents);
 	BINARYNINJACOREAPI char* BNAllocStringWithLength(const char* contents, size_t len);
 	BINARYNINJACOREAPI void BNFreeString(char* str);
