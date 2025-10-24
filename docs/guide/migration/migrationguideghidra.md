@@ -67,23 +67,33 @@ Common System Keybindings:
 | Open Settings     | `[CTRL/⌘-,]`       |
 | Open Keybindings  | `[CTRL/⌘-SHIFT-B]` |
 
+## UI Settings
+
+When you select "Ghidra-like" from the UI Settings dropdown in the welcome window, Binary Ninja will configure several settings to provide a more Ghidra-familiar experience:
+
+### View Settings
+- **View Type**: Sets the default view to Single Function View in linear mode, similar to Ghidra's listing view
+- **Show Address**: Disabled in linear view for a cleaner interface
+
+### Feature Map
+- **Visibility**: Hidden by default (you can show/hide the feature map at any time using `View > Show Feature Map`)
+
+### Sidebar Configuration
+- **Default Sidebars**: Shows only the Symbols sidebar by default (instead of both Symbols and Cross References)
+
+### Types Sidebar
+- **Details Section**: Hidden by default to maximize space for the type list
+- You can toggle the details section visibility using the hamburger menu in the Types sidebar (look for "Hide Details")
+
+These settings can be changed at any time through Binary Ninja's settings menu (`[CTRL/⌘-,]`). For a more complete Ghidra-like layout with split panes, see the Layout section below.
+
 ## Layout
 
 Binary Ninja's layout is also a bit different from what you're used to in Ghidra, but thankfully Binary Ninja's UI is flexible enough to allow us to build something that will feel familiar.
 
-## Cross-References
-
-![xref icon >](../../img/xref-icon.png "Xref Icon")
-
-If you prefer the pop-up style cross-references from IDA or Ghidra, you can enable that behavior by right-clicking on the xref-icon and selecting "Window". Whenever you navigate from the window by double-clicking or pressing enter the main window will be focused. ESC can also be used to close the xref window.
-
 ### Theme
 
 This doesn't exactly have to do with your layout, but it go a long way towards making the interface feel a bit more familiar. We have an expansive list of [community themes](https://github.com/Vector35/community-themes), and [a guide](../../dev/themes.md) and a [blog post](https://binary.ninja/2021/07/08/creating-great-themes.html) on how to make your own. The built-in "Classic" theme should feel nostalgic, but if you're looking for a light theme that's slightly easier on the eyes, try out Summer or Solarized Light.
-
-### Feature Map
-
-Binary Ninja's [feature map](../index.md#feature-map) lives on the right side of your main view area. If you'd rather not see it, you can right-click it and select "Hide Feature Map."
 
 ### Sidebars
 
@@ -95,9 +105,9 @@ That said, I'll walk you through how to set up your sidebars to get it looking v
 
 But first, there are a couple caveats. Binary Ninja does not have an exact 1-to-1 widget for everything in Ghidra. The Program Tree is one of those elements; it's a bit like our memory map, but it's also kinda not. Our new Binary Ninja layout assumes you've closed the program tree in Ghidra. Now Binary Ninja and Ghidra's sidebars are starting to match by having the symbols view on the top (which we start as a flat listing for you to organize into file yourself), and a different sidebar panel below it. Be sure to check out the options in the Symbols list's hamburger menu (the three lines in the top right).
 
-#### Cross References and Types Manager
+#### Types Manager
 
-We show cross references by default, but you can toggle that just by clicking it off on the left side under the divider line. If you want to match how Ghidra has its types showing on the bottom, you can simply drag the types widget to beneath the divider line on the left side. Whenever you open your sidebar, both areas will open together. The Types sidebar also shows you the full type definition when you select a type.
+If you want to match how Ghidra has its types showing on the bottom, you can simply drag the types widget to beneath the divider line on the left side. Whenever you open your sidebar, both areas will open together. The Types sidebar also shows you the full type definition when you select a type.
 
 #### Main Area
 
