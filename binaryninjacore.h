@@ -177,12 +177,12 @@
 extern "C"
 {
 #endif
-	typedef enum BNPluginLoadOrder
+	typedef enum BNPluginLoadPhase
 	{
-		EarlyPluginLoadOrder,
-		NormalPluginLoadOrder,
-		LatePluginLoadOrder
-	} BNPluginLoadOrder;
+		NativePluginLoadPhase,
+		ScriptingProviderLoadPhase,
+		ScriptPluginLoadPhase
+	} BNPluginLoadPhase;
 
 	typedef enum PluginLoadStatus
 	{
@@ -3963,7 +3963,7 @@ extern "C"
 	BINARYNINJACOREAPI bool BNExecuteWorkerProcess(const char* path, const char** args, BNDataBuffer* input,
 	    char** output, char** error, bool stdoutIsText, bool stderrIsText);
 
-	BINARYNINJACOREAPI void BNSetCurrentPluginLoadOrder(BNPluginLoadOrder order);
+	BINARYNINJACOREAPI void BNSetCurrentPluginLoadOrder(BNPluginLoadPhase order);
 	BINARYNINJACOREAPI void BNAddRequiredPluginDependency(const char* name);
 	BINARYNINJACOREAPI void BNAddOptionalPluginDependency(const char* name);
 

@@ -280,7 +280,7 @@ uint32_t BinaryNinja::GetBuildId()
 }
 
 
-void BinaryNinja::SetCurrentPluginLoadOrder(BNPluginLoadOrder order)
+void BinaryNinja::SetCurrentPluginLoadOrder(BNPluginLoadPhase order)
 {
 	BNSetCurrentPluginLoadOrder(order);
 }

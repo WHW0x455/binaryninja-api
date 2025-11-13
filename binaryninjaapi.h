@@ -2052,7 +2052,7 @@ namespace BinaryNinja {
 	std::string GetActiveUpdateChannel();
 	void SetActiveUpdateChannel(const std::string& channel);
 
-	void SetCurrentPluginLoadOrder(BNPluginLoadOrder order);
+	void SetCurrentPluginLoadOrder(BNPluginLoadPhase order);
 	void AddRequiredPluginDependency(const std::string& name);
 	void AddOptionalPluginDependency(const std::string& name);
 
