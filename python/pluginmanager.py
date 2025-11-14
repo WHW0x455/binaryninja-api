@@ -29,9 +29,9 @@ from . import deprecation
 from .enums import PluginType
 
 
-class RepoPlugin:
+class Extension:
 	"""
-	``RepoPlugin`` is mostly read-only, however you can install/uninstall enable/disable plugins. RepoPlugins are
+	``Extension`` is mostly read-only, however you can install/uninstall enable/disable plugins. Extensions are
 	created by parsing the plugins.json in a plugin repository.
 	"""
 	def __init__(self, handle: core.BNPluginHandle):
@@ -313,8 +313,8 @@ class Repository:
 		return result
 
 	@property
-	def plugins(self) -> List[RepoPlugin]:
-		"""List of RepoPlugin objects contained within this repository"""
+	def plugins(self) -> List[Extension]:
+		"""List of Extension objects contained within this repository"""
 		pluginlist = []
 		count = ctypes.c_ulonglong(0)
 		result = core.BNRepositoryGetPlugins(self.handle, count)
@@ -323,7 +323,7 @@ class Repository:
 			for i in range(count.value):
 				plugin_ref = core.BNNewPluginReference(result[i])
 				assert plugin_ref is not None, "core.BNNewPluginReference returned None"
-				pluginlist.append(RepoPlugin(plugin_ref))
+				pluginlist.append(Extension(plugin_ref))
 			return pluginlist
 		finally:
 			core.BNFreeRepositoryPluginList(result)
@@ -365,8 +365,8 @@ class RepositoryManager:
 			core.BNFreeRepositoryManagerRepositoriesList(repos)
 
 	@property
-	def plugins(self) -> Dict[str, List[RepoPlugin]]:
-		"""List of all RepoPlugins in each repository"""
+	def plugins(self) -> Dict[str, List[Extension]]:
+		"""List of all Extensions in each repository"""
 		plugin_list = {}
 		for repo in self.repositories:
 			plugin_list[repo.path] = repo.plugins

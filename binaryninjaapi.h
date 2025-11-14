@@ -2001,15 +2001,6 @@ namespace BinaryNinja {
 	void DisablePlugins();
 	bool IsPluginsEnabled();
 	bool InitPlugins(bool allowUserPlugins = true);
-	/*!
-		\deprecated Use `InitPlugins()`
-	*/
-	void InitCorePlugins();  // Deprecated, use InitPlugins
-	/*!
-		\deprecated Use `InitPlugins()`
-	*/
-	void InitUserPlugins();  // Deprecated, use InitPlugins
-	void InitRepoPlugins();
 
 	std::string GetBundledPluginDirectory();
 	void SetBundledPluginDirectory(const std::string& path);
@@ -18426,10 +18417,10 @@ namespace BinaryNinja {
 	/*!
 		\ingroup pluginmanager
 	*/
-	class RepoPlugin : public CoreRefCountObject<BNPlugin, BNNewPluginReference, BNFreePlugin>
+	class Extension : public CoreRefCountObject<BNPlugin, BNNewPluginReference, BNFreePlugin>
 	{
 	  public:
-		RepoPlugin(BNPlugin* plugin);
+		Extension(BNPlugin* plugin);
 		PluginStatus GetPluginStatus() const;
 		std::vector<std::string> GetApis() const;
 		std::vector<std::string> GetInstallPlatforms() const;
@@ -18485,9 +18476,9 @@ namespace BinaryNinja {
 		std::string GetRepoPath() const;
 		std::string GetLocalReference() const;
 		std::string GetRemoteReference() const;
-		std::vector<Ref<RepoPlugin>> GetPlugins() const;
+		std::vector<Ref<Extension>> GetPlugins() const;
 		std::string GetPluginDirectory() const;
-		Ref<RepoPlugin> GetPluginByPath(const std::string& pluginPath);
+		Ref<Extension> GetPluginByPath(const std::string& pluginPath);
 		std::string GetFullPath() const;
 	};
 

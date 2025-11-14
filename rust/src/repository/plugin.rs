@@ -10,11 +10,11 @@ use std::ptr::NonNull;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[repr(transparent)]
-pub struct RepositoryPlugin {
+pub struct Extension {
     handle: NonNull<BNPlugin>,
 }
 
-impl RepositoryPlugin {
+impl Extension {
     pub(crate) unsafe fn from_raw(handle: NonNull<BNPlugin>) -> Self {
         Self { handle }
     }
@@ -253,9 +253,9 @@ impl RepositoryPlugin {
     }
 }
 
-impl Debug for RepositoryPlugin {
+impl Debug for Extension {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("RepositoryPlugin")
+        f.debug_struct("Extension")
             .field("name", &self.name())
             .field("version", &self.version())
             .field("author", &self.author())
@@ -268,7 +268,7 @@ impl Debug for RepositoryPlugin {
     }
 }
 
-impl ToOwned for RepositoryPlugin {
+impl ToOwned for Extension {
     type Owned = Ref<Self>;
 
     fn to_owned(&self) -> Self::Owned {
@@ -276,7 +276,7 @@ impl ToOwned for RepositoryPlugin {
     }
 }
 
-unsafe impl RefCountable for RepositoryPlugin {
+unsafe impl RefCountable for Extension {
     unsafe fn inc_ref(handle: &Self) -> Ref<Self> {
         Self::ref_from_raw(NonNull::new(BNNewPluginReference(handle.handle.as_ptr())).unwrap())
     }
@@ -286,13 +286,13 @@ unsafe impl RefCountable for RepositoryPlugin {
     }
 }
 
-impl CoreArrayProvider for RepositoryPlugin {
+impl CoreArrayProvider for Extension {
     type Raw = *mut BNPlugin;
     type Context = ();
     type Wrapped<'a> = Guard<'a, Self>;
 }
 
-unsafe impl CoreArrayProviderInner for RepositoryPlugin {
+unsafe impl CoreArrayProviderInner for Extension {
     unsafe fn free(raw: *mut Self::Raw, _count: usize, _context: &Self::Context) {
         BNFreeRepositoryPluginList(raw)
     }
