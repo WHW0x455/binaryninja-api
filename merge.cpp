@@ -30,10 +30,7 @@ DatabaseObject::DatabaseObject(BNDatabaseObject* object)
 }
 
 
-DatabaseObject::~DatabaseObject()
-{
-	BNFreeDatabaseObject(m_object);
-}
+DatabaseObject::~DatabaseObject() = default;
 
 
 Ref<DatabaseObject> DatabaseObject::GetParent() const
@@ -122,10 +119,7 @@ DiffState::DiffState(Ref<Logger> logger)
 }
 
 
-DiffState::~DiffState()
-{
-	BNFreeDiffState(m_object);
-}
+DiffState::~DiffState() = default;
 
 
 std::vector<std::string> DiffState::GetErrors() const
@@ -202,10 +196,7 @@ DiffObject::DiffObject(BNDiffObject* object)
 }
 
 
-DiffObject::~DiffObject()
-{
-	BNFreeDiffObject(m_object);
-}
+DiffObject::~DiffObject() = default;
 
 
 std::optional<std::string> DiffObject::GetBase() const
