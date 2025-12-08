@@ -315,6 +315,18 @@ extern "C"
 	typedef struct BNStringRecognizer BNStringRecognizer;
 	typedef struct BNCustomStringType BNCustomStringType;
 
+	typedef struct BNPluginVersion
+	{
+		char* id;
+		char* versionString;
+		char* longDescription;
+		char* changelog;
+
+		uint64_t minimumClientVersion;
+		char* created;
+
+	} BNPluginVersion;
+
 	typedef struct BNRemoteFileSearchMatch
 	{
 		char* projectId;
@@ -7682,8 +7694,6 @@ extern "C"
 	BINARYNINJACOREAPI char** BNPluginGetApis(BNPlugin* p, size_t* count);
 	BINARYNINJACOREAPI const char* BNPluginGetAuthor(BNPlugin* p);
 	BINARYNINJACOREAPI const char* BNPluginGetDescription(BNPlugin* p);
-	BINARYNINJACOREAPI const char* BNPluginGetLicenseText(BNPlugin* p);
-	BINARYNINJACOREAPI const char* BNPluginGetLongdescription(BNPlugin* p);
 	BINARYNINJACOREAPI BNVersionInfo BNPluginGetMinimumVersionInfo(BNPlugin* p);
 	BINARYNINJACOREAPI BNVersionInfo BNPluginGetMaximumVersionInfo(BNPlugin* p);
 	BINARYNINJACOREAPI BNVersionInfo BNParseVersionString(const char* v);
@@ -7692,7 +7702,9 @@ extern "C"
 	BINARYNINJACOREAPI const char* BNPluginGetProjectUrl(BNPlugin* p);
 	BINARYNINJACOREAPI const char* BNPluginGetPackageUrl(BNPlugin* p);
 	BINARYNINJACOREAPI const char* BNPluginGetAuthorUrl(BNPlugin* p);
-	BINARYNINJACOREAPI const char* BNPluginGetVersion(BNPlugin* p);
+	BINARYNINJACOREAPI BNPluginVersion* BNPluginGetVersions(BNPlugin* p, size_t* count);
+	BINARYNINJACOREAPI void BNFreePluginVersions(BNPluginVersion* r, size_t count);
+	BINARYNINJACOREAPI const char* BNPluginGetCurrentVersion(BNPlugin* p);
 	BINARYNINJACOREAPI const char* BNPluginGetCommit(BNPlugin* p);
 	BINARYNINJACOREAPI const bool BNPluginGetViewOnly(BNPlugin* p);
 	BINARYNINJACOREAPI void BNFreePluginTypes(BNPluginType* r);
@@ -7724,7 +7736,7 @@ extern "C"
 	BINARYNINJACOREAPI bool BNPluginAreDependenciesBeingInstalled(BNPlugin* p);
 
 	BINARYNINJACOREAPI char* BNPluginGetProjectData(BNPlugin* p);
-	BINARYNINJACOREAPI uint64_t BNPluginGetLastUpdate(BNPlugin* p);
+	BINARYNINJACOREAPI char* BNPluginGetCurrentVersionCreationDate(BNPlugin* p);
 
 	BINARYNINJACOREAPI BNRepository* BNNewRepositoryReference(BNRepository* r);
 	BINARYNINJACOREAPI void BNFreeRepository(BNRepository* r);

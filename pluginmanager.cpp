@@ -70,16 +70,6 @@ string Extension::GetDescription() const
 	RETURN_STRING(BNPluginGetDescription(m_object));
 }
 
-string Extension::GetLicenseText() const
-{
-	RETURN_STRING(BNPluginGetLicenseText(m_object));
-}
-
-string Extension::GetLongdescription() const
-{
-	RETURN_STRING(BNPluginGetLongdescription(m_object));
-}
-
 VersionInfo Extension::GetMinimumVersionInfo() const
 {
 	auto coreInfo = BNPluginGetMinimumVersionInfo(m_object);
@@ -141,9 +131,31 @@ string Extension::GetAuthorUrl() const
 }
 
 
-string Extension::GetVersion() const
+std::vector<ExtensionVersion> Extension::GetVersions() const
 {
-	RETURN_STRING(BNPluginGetVersion(m_object));
+	size_t count;
+	BNPluginVersion* versionsPtr = BNPluginGetVersions(m_object, &count);
+	std::vector<ExtensionVersion> versions;
+	for (size_t i = 0; i < count; i++)
+	{
+		ExtensionVersion version;
+		version.id = versionsPtr[i].id ? versionsPtr[i].id : "";
+		version.version = versionsPtr[i].versionString ? versionsPtr[i].versionString :
+		    "";
+		version.longDescription = versionsPtr[i].longDescription ? versionsPtr[i].longDescription : "";
+		version.changelog = versionsPtr[i].changelog ? versionsPtr[i].changelog : "";
+		version.minimumClientVersion = versionsPtr[i].minimumClientVersion;
+		version.created = versionsPtr[i].created ? versionsPtr[i].created : "";
+		versions.push_back(version);
+	}
+	BNFreePluginVersions(versionsPtr, count);
+	return versions;
+}
+
+
+std::string Extension::GetCurrentVersion() const
+{
+	RETURN_STRING(BNPluginGetCurrentVersion(m_object));
 }
 
 
@@ -223,9 +235,9 @@ bool Extension::AreDependenciesBeingInstalled() const
 }
 
 
-uint64_t Extension::GetLastUpdate()
+string Extension::GetCreationDate()
 {
-	return BNPluginGetLastUpdate(m_object);
+	return BNPluginGetCurrentVersionCreationDate(m_object);
 }
 
 string Extension::GetProjectData()

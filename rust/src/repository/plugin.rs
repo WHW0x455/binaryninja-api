@@ -45,20 +45,6 @@ impl Extension {
         unsafe { BnString::into_string(result as *mut c_char) }
     }
 
-    /// String complete license text for the given plugin
-    pub fn license_text(&self) -> String {
-        let result = unsafe { BNPluginGetLicenseText(self.handle.as_ptr()) };
-        assert!(!result.is_null());
-        unsafe { BnString::into_string(result as *mut c_char) }
-    }
-
-    /// String long description of the plugin
-    pub fn long_description(&self) -> String {
-        let result = unsafe { BNPluginGetLongdescription(self.handle.as_ptr()) };
-        assert!(!result.is_null());
-        unsafe { BnString::into_string(result as *mut c_char) }
-    }
-
     /// Minimum version info the plugin was tested on
     pub fn minimum_version_info(&self) -> VersionInfo {
         let result = unsafe { BNPluginGetMinimumVersionInfo(self.handle.as_ptr()) };
@@ -95,12 +81,6 @@ impl Extension {
     /// String URL of the plugin author's url
     pub fn author_url(&self) -> String {
         let result = unsafe { BNPluginGetAuthorUrl(self.handle.as_ptr()) };
-        assert!(!result.is_null());
-        unsafe { BnString::into_string(result as *mut c_char) }
-    }
-    /// String version of the plugin
-    pub fn version(&self) -> String {
-        let result = unsafe { BNPluginGetVersion(self.handle.as_ptr()) };
         assert!(!result.is_null());
         unsafe { BnString::into_string(result as *mut c_char) }
     }
@@ -245,24 +225,16 @@ impl Extension {
         assert!(!result.is_null());
         unsafe { BnString::into_string(result) }
     }
-
-    /// Returns a datetime object representing the plugins last update
-    pub fn last_update(&self) -> SystemTime {
-        let result = unsafe { BNPluginGetLastUpdate(self.handle.as_ptr()) };
-        UNIX_EPOCH + Duration::from_secs(result)
-    }
 }
 
 impl Debug for Extension {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Extension")
             .field("name", &self.name())
-            .field("version", &self.version())
             .field("author", &self.author())
             .field("description", &self.description())
             .field("minimum_version_info", &self.minimum_version_info())
             .field("maximum_version_info", &self.maximum_version_info())
-            .field("last_update", &self.last_update())
             .field("status", &self.status())
             .finish()
     }

@@ -18414,6 +18414,18 @@ namespace BinaryNinja {
 	typedef BNPluginStatus PluginStatus;
 	typedef BNPluginType PluginType;
 
+	struct ExtensionVersion
+	{
+		std::string id;
+		std::string version;
+
+		std::string longDescription;
+		std::string changelog;
+
+		uint64_t minimumClientVersion;
+		std::string created;
+	};
+
 	/*!
 		\ingroup pluginmanager
 	*/
@@ -18430,20 +18442,19 @@ namespace BinaryNinja {
 		std::string GetPluginDirectory() const;
 		std::string GetAuthor() const;
 		std::string GetDescription() const;
-		std::string GetLicenseText() const;
-		std::string GetLongdescription() const;
 		std::string GetName() const;
 		std::vector<PluginType> GetPluginTypes() const;
 		std::string GetPackageUrl() const;
 		std::string GetProjectUrl() const;
 		std::string GetAuthorUrl() const;
-		std::string GetVersion() const;
+		std::vector<ExtensionVersion> GetVersions() const;
+		std::string GetCurrentVersion() const;
 		std::string GetCommit() const;
 		std::string GetRepository() const;
 		std::string GetProjectData();
 		VersionInfo GetMinimumVersionInfo() const;
 		VersionInfo GetMaximumVersionInfo() const;
-		uint64_t GetLastUpdate();
+		std::string GetCreationDate();
 		bool IsViewOnly() const;
 		bool IsBeingDeleted() const;
 		bool IsBeingUpdated() const;
