@@ -1307,7 +1307,10 @@ bool ElfView::Init()
 				DefineElfSymbol(FunctionSymbol, entry->name, entry->value, false, entry->binding);
 				break;
 			case ELF_STT_FUNC:
-				DefineElfSymbol(FunctionSymbol, entry->name, entry->value, false, entry->binding);
+				if (!m_plat || m_plat->GetName() != "tms320c6x" || !entry->name.starts_with("$C$")) {
+					// TMS320C6x ELFs contain function symbols for labeling blocks that aren't actually functions
+					DefineElfSymbol(FunctionSymbol, entry->name, entry->value, false, entry->binding);
+				}
 				break;
 			case ELF_STT_TLS:
 				/* - only create Binja symbols for .symtab (not .dynsym) symbols
