@@ -961,7 +961,7 @@ impl<'a, S: Source<'a> + 'a> PDBParserInstance<'a, S> {
                     MIN_CONFIDENCE,
                 )),
                 p.name.clone(),
-                p.storage.first().map(|loc| loc.location),
+                p.storage.first().map(|loc| loc.location.into()),
             );
             // Ignore thisptr because it's not technically part of the raw type signature
             if p.name != "this" {
@@ -976,7 +976,7 @@ impl<'a, S: Source<'a> + 'a> PDBParserInstance<'a, S> {
                     MIN_CONFIDENCE,
                 )),
                 p.name.clone(),
-                p.storage.first().map(|loc| loc.location),
+                p.storage.first().map(|loc| loc.location.into()),
             );
             // Ignore thisptr because it's not technically part of the raw type signature
             if p.name != "this" {
@@ -1050,8 +1050,15 @@ impl<'a, S: Source<'a> + 'a> PDBParserInstance<'a, S> {
         self.log(|| format!("Default calling convention: {:?}", self.default_cc));
         self.log(|| format!("Result calling convention: {:?}", cc));
 
-        let locations = cc.contents.variables_for_parameters(&fancy_params, None);
-        for (p, new_location) in fancy_params.iter_mut().zip(locations.into_iter()) {
+        let layout = cc.contents.call_layout(
+            fancy_type
+                .contents
+                .return_value()
+                .unwrap_or_else(|| Type::void().into()),
+            &fancy_params,
+            None,
+        );
+        for (p, new_location) in fancy_params.iter_mut().zip(layout.parameters.into_iter()) {
             p.location = Some(new_location);
         }
 

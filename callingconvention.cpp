@@ -24,6 +24,61 @@ using namespace std;
 using namespace BinaryNinja;
 
 
+CallLayout CallLayout::FromAPIObject(BNCallLayout* layout)
+{
+	CallLayout result;
+	result.parameters.reserve(layout->parameterCount);
+	for (size_t i = 0; i < layout->parameterCount; i++)
+		result.parameters.push_back(ValueLocation::FromAPIObject(&layout->parameters[i]));
+	if (layout->returnValueValid)
+		result.returnValue = ValueLocation::FromAPIObject(&layout->returnValue);
+	result.stackAdjustment = layout->stackAdjustment;
+	for (size_t i = 0; i < layout->registerStackAdjustmentCount; i++)
+	{
+		result.registerStackAdjustments[layout->registerStackAdjustmentRegisters[i]] =
+			layout->registerStackAdjustmentAmounts[i];
+	}
+	return result;
+}
+
+
+BNCallLayout CallLayout::ToAPIObject() const
+{
+	BNCallLayout result;
+	result.parameters = new BNValueLocation[parameters.size()];
+	result.parameterCount = parameters.size();
+	for (size_t i = 0; i < parameters.size(); i++)
+		result.parameters[i] = parameters[i].ToAPIObject();
+	result.returnValue = returnValue.value_or(ValueLocation()).ToAPIObject();
+	result.returnValueValid = returnValue.has_value();
+	result.stackAdjustment = stackAdjustment;
+
+	result.registerStackAdjustmentCount = registerStackAdjustments.size();
+	result.registerStackAdjustmentRegisters = new uint32_t[registerStackAdjustments.size()];
+	result.registerStackAdjustmentAmounts = new int32_t[registerStackAdjustments.size()];
+	size_t i = 0;
+	for (auto [reg, adjust] : registerStackAdjustments)
+	{
+		result.registerStackAdjustmentRegisters[i] = reg;
+		result.registerStackAdjustmentAmounts[i] = adjust;
+		i++;
+	}
+
+	return result;
+}
+
+
+void CallLayout::FreeAPIObject(BNCallLayout* layout)
+{
+	for (size_t i = 0; i < layout->parameterCount; i++)
+		ValueLocation::FreeAPIObject(&layout->parameters[i]);
+	delete[] layout->parameters;
+	ValueLocation::FreeAPIObject(&layout->returnValue);
+	delete[] layout->registerStackAdjustmentRegisters;
+	delete[] layout->registerStackAdjustmentAmounts;
+}
+
+
 CallingConvention::CallingConvention(BNCallingConvention* cc)
 {
 	m_object = cc;
@@ -54,6 +109,12 @@ CallingConvention::CallingConvention(Architecture* arch, const string& name)
 	cc.getIncomingFlagValue = GetIncomingFlagValueCallback;
 	cc.getIncomingVariableForParameterVariable = GetIncomingVariableForParameterVariableCallback;
 	cc.getParameterVariableForIncomingVariable = GetParameterVariableForIncomingVariableCallback;
+	cc.getCallLayout = GetCallLayoutCallback;
+	cc.freeCallLayout = FreeCallLayoutCallback;
+	cc.getReturnValueLocation = GetReturnValueLocationCallback;
+	cc.freeValueLocation = FreeValueLocationCallback;
+	cc.getParameterLocations = GetParameterLocationsCallback;
+	cc.freeParameterLocations = FreeParameterLocationsCallback;
 
 	AddRefForRegistration();
 	m_object = BNCreateCallingConvention(arch->GetObject(), name.c_str(), &cc);
@@ -245,6 +306,90 @@ void CallingConvention::GetParameterVariableForIncomingVariableCallback(
 }
 
 
+BNCallLayout CallingConvention::GetCallLayoutCallback(void* ctxt, BNReturnValue* returnValue,
+	BNFunctionParameter* params, size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs,
+	size_t permittedRegCount)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	auto ret = ReturnValue::FromAPIObject(returnValue);
+	vector<FunctionParameter> paramObjs;
+	paramObjs.reserve(paramCount);
+	for (size_t i = 0; i < paramCount; i++)
+		paramObjs.push_back(FunctionParameter::FromAPIObject(&params[i]));
+	optional<set<uint32_t>> regOpt;
+	if (hasPermittedRegs)
+	{
+		set<uint32_t> regs;
+		for (size_t i = 0; i < permittedRegCount; i++)
+			regs.insert(permittedRegs[i]);
+		regOpt = regs;
+	}
+
+	auto layout = cc->GetCallLayout(ret, paramObjs, regOpt);
+	return layout.ToAPIObject();
+}
+
+
+void CallingConvention::FreeCallLayoutCallback(void*, BNCallLayout* layout)
+{
+	CallLayout::FreeAPIObject(layout);
+}
+
+
+BNValueLocation CallingConvention::GetReturnValueLocationCallback(void* ctxt, BNReturnValue* returnValue)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	ReturnValue ret = ReturnValue::FromAPIObject(returnValue);
+	ValueLocation location = cc->GetReturnValueLocation(ret);
+	return location.ToAPIObject();
+}
+
+
+void CallingConvention::FreeValueLocationCallback(void*, BNValueLocation* location)
+{
+	ValueLocation::FreeAPIObject(location);
+}
+
+
+BNValueLocation* CallingConvention::GetParameterLocationsCallback(void* ctxt, BNValueLocation* returnValue,
+	BNFunctionParameter* params, size_t paramCount, bool hasPermittedRegs, uint32_t* permittedRegs,
+	size_t permittedRegCount, size_t* outLocationCount)
+{
+	CallbackRef<CallingConvention> cc(ctxt);
+	std::optional<ValueLocation> ret;
+	if (returnValue)
+		ret = ValueLocation::FromAPIObject(returnValue);
+	vector<FunctionParameter> paramObjs;
+	paramObjs.reserve(paramCount);
+	for (size_t i = 0; i < paramCount; i++)
+		paramObjs.push_back(FunctionParameter::FromAPIObject(&params[i]));
+	optional<set<uint32_t>> regOpt;
+	if (hasPermittedRegs)
+	{
+		set<uint32_t> regs;
+		for (size_t i = 0; i < permittedRegCount; i++)
+			regs.insert(permittedRegs[i]);
+		regOpt = regs;
+	}
+
+	vector<ValueLocation> locations = cc->GetParameterLocations(ret, paramObjs, regOpt);
+
+	*outLocationCount = locations.size();
+	BNValueLocation* result = new BNValueLocation[locations.size()];
+	for (size_t i = 0; i < locations.size(); i++)
+		result[i] = locations[i].ToAPIObject();
+	return result;
+}
+
+
+void CallingConvention::FreeParameterLocationsCallback(void*, BNValueLocation* locations, size_t count)
+{
+	for (size_t i = 0; i < count; i++)
+		ValueLocation::FreeAPIObject(&locations[i]);
+	delete[] locations;
+}
+
+
 Ref<Architecture> CallingConvention::GetArchitecture() const
 {
 	return new CoreArchitecture(BNGetCallingConventionArchitecture(m_object));
@@ -367,6 +512,118 @@ Variable CallingConvention::GetIncomingVariableForParameterVariable(const Variab
 Variable CallingConvention::GetParameterVariableForIncomingVariable(const Variable& var, Function*)
 {
 	return BNGetDefaultParameterVariableForIncomingVariable(m_object, &var);
+}
+
+
+CallLayout CallingConvention::GetCallLayout(const ReturnValue& returnValue, const vector<FunctionParameter>& params,
+	const optional<set<uint32_t>>& permittedRegs)
+{
+	return GetDefaultCallLayout(returnValue, params, permittedRegs);
+}
+
+
+ValueLocation CallingConvention::GetReturnValueLocation(const ReturnValue& returnValue)
+{
+	return GetDefaultReturnValueLocation(returnValue);
+}
+
+
+vector<ValueLocation> CallingConvention::GetParameterLocations(const optional<ValueLocation>& returnValue,
+	const vector<FunctionParameter>& params, const optional<set<uint32_t>>& permittedRegs)
+{
+	return GetDefaultParameterLocations(returnValue, params, permittedRegs);
+}
+
+
+CallLayout CallingConvention::GetDefaultCallLayout(const ReturnValue& returnValue,
+	const vector<FunctionParameter>& params, const optional<set<uint32_t>>& permittedRegs)
+{
+	BNReturnValue ret = returnValue.ToAPIObject();
+	BNFunctionParameter* paramArray = new BNFunctionParameter[params.size()];
+	for (size_t i = 0; i < params.size(); i++)
+		paramArray[i] = params[i].ToAPIObject();
+
+	BNCallLayout layout;
+	if (permittedRegs.has_value())
+	{
+		uint32_t* regs = new uint32_t[permittedRegs->size()];
+		size_t i = 0;
+		for (auto reg : *permittedRegs)
+			regs[i++] = reg;
+		layout = BNGetDefaultCallLayout(m_object, &ret, paramArray, params.size(), regs, permittedRegs->size());
+		delete[] regs;
+	}
+	else
+	{
+		layout = BNGetDefaultCallLayoutDefaultPermittedArgs(m_object, &ret, paramArray, params.size());
+	}
+
+	ReturnValue::FreeAPIObject(&ret);
+	for (size_t i = 0; i < params.size(); i++)
+		FunctionParameter::FreeAPIObject(&paramArray[i]);
+	delete[] paramArray;
+
+	CallLayout result = CallLayout::FromAPIObject(&layout);
+	BNFreeCallLayout(&layout);
+	return result;
+}
+
+
+ValueLocation CallingConvention::GetDefaultReturnValueLocation(const ReturnValue& returnValue)
+{
+	BNReturnValue ret = returnValue.ToAPIObject();
+	BNValueLocation location = BNGetDefaultReturnValueLocation(m_object, &ret);
+	ReturnValue::FreeAPIObject(&ret);
+
+	ValueLocation result = ValueLocation::FromAPIObject(&location);
+	BNFreeValueLocation(&location);
+	return result;
+}
+
+
+vector<ValueLocation> CallingConvention::GetDefaultParameterLocations(const optional<ValueLocation>& returnValue,
+	const vector<FunctionParameter>& params, const optional<set<uint32_t>>& permittedRegs)
+{
+	BNValueLocation* retOpt = nullptr;
+	BNValueLocation ret;
+	if (returnValue.has_value())
+	{
+		ret = returnValue->ToAPIObject();
+		retOpt = &ret;
+	}
+	BNFunctionParameter* paramArray = new BNFunctionParameter[params.size()];
+	for (size_t i = 0; i < params.size(); i++)
+		paramArray[i] = params[i].ToAPIObject();
+
+	size_t locationCount = 0;
+	BNValueLocation* locations;
+	if (permittedRegs.has_value())
+	{
+		uint32_t* regs = new uint32_t[permittedRegs->size()];
+		size_t i = 0;
+		for (auto reg : *permittedRegs)
+			regs[i++] = reg;
+		locations = BNGetDefaultParameterLocations(
+			m_object, retOpt, paramArray, params.size(), regs, permittedRegs->size(), &locationCount);
+	}
+	else
+	{
+		locations = BNGetDefaultParameterLocationsDefaultPermittedArgs(
+			m_object, retOpt, paramArray, params.size(), &locationCount);
+	}
+
+	if (retOpt)
+		ValueLocation::FreeAPIObject(retOpt);
+	for (size_t i = 0; i < params.size(); i++)
+		FunctionParameter::FreeAPIObject(&paramArray[i]);
+	delete[] paramArray;
+
+	vector<ValueLocation> result;
+	result.reserve(locationCount);
+	for (size_t i = 0; i < locationCount; i++)
+		result.push_back(ValueLocation::FromAPIObject(&locations[i]));
+	BNFreeValueLocationList(locations, locationCount);
+	return result;
 }
 
 
@@ -503,4 +760,96 @@ Variable CoreCallingConvention::GetIncomingVariableForParameterVariable(const Va
 Variable CoreCallingConvention::GetParameterVariableForIncomingVariable(const Variable& var, Function* func)
 {
 	return BNGetParameterVariableForIncomingVariable(m_object, &var, func ? func->GetObject() : nullptr);
+}
+
+
+CallLayout CoreCallingConvention::GetCallLayout(const ReturnValue& returnValue, const vector<FunctionParameter>& params,
+	const optional<set<uint32_t>>& permittedRegs)
+{
+	BNReturnValue ret = returnValue.ToAPIObject();
+	BNFunctionParameter* paramArray = new BNFunctionParameter[params.size()];
+	for (size_t i = 0; i < params.size(); i++)
+		paramArray[i] = params[i].ToAPIObject();
+
+	BNCallLayout layout;
+	if (permittedRegs.has_value())
+	{
+		uint32_t* regs = new uint32_t[permittedRegs->size()];
+		size_t i = 0;
+		for (auto reg : *permittedRegs)
+			regs[i++] = reg;
+		layout = BNGetCallLayout(m_object, &ret, paramArray, params.size(), regs, permittedRegs->size());
+		delete[] regs;
+	}
+	else
+	{
+		layout = BNGetCallLayoutDefaultPermittedArgs(m_object, &ret, paramArray, params.size());
+	}
+
+	ReturnValue::FreeAPIObject(&ret);
+	for (size_t i = 0; i < params.size(); i++)
+		FunctionParameter::FreeAPIObject(&paramArray[i]);
+	delete[] paramArray;
+
+	CallLayout result = CallLayout::FromAPIObject(&layout);
+	BNFreeCallLayout(&layout);
+	return result;
+}
+
+
+ValueLocation CoreCallingConvention::GetReturnValueLocation(const ReturnValue& returnValue)
+{
+	BNReturnValue ret = returnValue.ToAPIObject();
+	BNValueLocation location = BNGetReturnValueLocation(m_object, &ret);
+	ReturnValue::FreeAPIObject(&ret);
+
+	ValueLocation result = ValueLocation::FromAPIObject(&location);
+	BNFreeValueLocation(&location);
+	return result;
+}
+
+
+vector<ValueLocation> CoreCallingConvention::GetParameterLocations(const optional<ValueLocation>& returnValue,
+	const vector<FunctionParameter>& params, const optional<set<uint32_t>>& permittedRegs)
+{
+	BNValueLocation* retOpt = nullptr;
+	BNValueLocation ret;
+	if (returnValue.has_value())
+	{
+		ret = returnValue->ToAPIObject();
+		retOpt = &ret;
+	}
+	BNFunctionParameter* paramArray = new BNFunctionParameter[params.size()];
+	for (size_t i = 0; i < params.size(); i++)
+		paramArray[i] = params[i].ToAPIObject();
+
+	size_t locationCount = 0;
+	BNValueLocation* locations;
+	if (permittedRegs.has_value())
+	{
+		uint32_t* regs = new uint32_t[permittedRegs->size()];
+		size_t i = 0;
+		for (auto reg : *permittedRegs)
+			regs[i++] = reg;
+		locations = BNGetParameterLocations(
+			m_object, retOpt, paramArray, params.size(), regs, permittedRegs->size(), &locationCount);
+	}
+	else
+	{
+		locations =
+			BNGetParameterLocationsDefaultPermittedArgs(m_object, retOpt, paramArray, params.size(), &locationCount);
+	}
+
+	if (retOpt)
+		ValueLocation::FreeAPIObject(retOpt);
+	for (size_t i = 0; i < params.size(); i++)
+		FunctionParameter::FreeAPIObject(&paramArray[i]);
+	delete[] paramArray;
+
+	vector<ValueLocation> result;
+	result.reserve(locationCount);
+	for (size_t i = 0; i < locationCount; i++)
+		result.push_back(ValueLocation::FromAPIObject(&locations[i]));
+	BNFreeValueLocationList(locations, locationCount);
+	return result;
 }

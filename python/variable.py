@@ -27,6 +27,7 @@ import binaryninja
 from . import _binaryninjacore as core
 from . import databuffer
 from . import decorators
+from . import types
 from .enums import RegisterValueType, VariableSourceType, DeadStoreElimination, FunctionGraphType, BuiltinType
 
 FunctionOrILFunction = Union["binaryninja.function.Function", "binaryninja.lowlevelil.LowLevelILFunction",
@@ -111,6 +112,10 @@ class RegisterValue:
 			return ConstantPointerRegisterValue(reg_value.value, confidence=confidence)
 		elif reg_value.state == RegisterValueType.StackFrameOffset:
 			return StackFrameOffsetRegisterValue(reg_value.value, confidence=confidence)
+		elif reg_value.state == RegisterValueType.ResultPointerValue:
+			return ResultPointerRegisterValue(reg_value.value, confidence=confidence)
+		elif reg_value.state == RegisterValueType.ParameterPointerValue:
+			return ParameterPointerRegisterValue(reg_value.value, confidence=confidence)
 		elif reg_value.state == RegisterValueType.ImportedAddressValue:
 			return ImportedAddressRegisterValue(reg_value.value, confidence=confidence)
 		elif reg_value.state == RegisterValueType.UndeterminedValue:
@@ -194,6 +199,23 @@ class StackFrameOffsetRegisterValue(RegisterValue):
 
 	def __repr__(self):
 		return f"<stack frame offset {self.value:#x}>"
+
+
+@dataclass(frozen=True, eq=False)
+class ResultPointerRegisterValue(RegisterValue):
+	offset: int = 0
+	type: RegisterValueType = RegisterValueType.ResultPointerValue
+
+	def __repr__(self):
+		return f"<result ptr offset {self.value:#x}>"
+
+@dataclass(frozen=True, eq=False)
+class ParameterPointerRegisterValue(RegisterValue):
+	offset: int = 0
+	type: RegisterValueType = RegisterValueType.ParameterPointerValue
+
+	def __repr__(self):
+		return f"<parameter {self.value} ptr offset {self.offset:#x}>"
 
 
 @dataclass(frozen=True, eq=False)
@@ -287,6 +309,11 @@ class PossibleValueSet:
 			self._value = value.value
 		elif value.state == RegisterValueType.StackFrameOffset:
 			self._offset = value.value
+		elif value.state == RegisterValueType.ResultPointerValue:
+			self._offset = value.value
+		elif value.state == RegisterValueType.ParameterPointerValue:
+			self._value = value.value
+			self._offset = value.offset
 		elif value.state & RegisterValueType.ConstantDataValue == RegisterValueType.ConstantDataValue:
 			self._value = value.value
 			self._size = value.size
@@ -334,6 +361,10 @@ class PossibleValueSet:
 			return f"<const ptr {self.value:#x}>"
 		if self._type == RegisterValueType.StackFrameOffset:
 			return f"<stack frame offset {self._offset:#x}>"
+		if self._type == RegisterValueType.ResultPointerValue:
+			return f"<result ptr offset {self._offset:#x}>"
+		if self._type == RegisterValueType.ParameterPointerValue:
+			return f"<parameter {self._value} ptr offset {self._offset:#x}>"
 		if self._type == RegisterValueType.ConstantDataZeroExtendValue:
 			return f"<const data {{zx.{self._size}({self.value:#x})}}>"
 		if self._type == RegisterValueType.ConstantDataSignExtendValue:
@@ -364,7 +395,7 @@ class PossibleValueSet:
 		if not isinstance(other, int):
 			return NotImplemented
 		#Initial implementation only checks numbers, no set logic
-		if self.type == RegisterValueType.StackFrameOffset:
+		if self.type in [RegisterValueType.StackFrameOffset, RegisterValueType.ResultPointerValue, RegisterValueType.ParameterPointerValue]:
 			return NotImplemented
 		if self.type in [RegisterValueType.SignedRangeValue, RegisterValueType.UnsignedRangeValue]:
 			for rng in self.ranges:
@@ -395,6 +426,10 @@ class PossibleValueSet:
 			return self.value == other.value
 		elif self.type == RegisterValueType.StackFrameOffset:
 			return self.offset == other.offset
+		elif self.type == RegisterValueType.ResultPointerValue:
+			return self.offset == other.offset
+		elif self.type == RegisterValueType.ParameterPointerValue:
+			return self.value == other.value and self.offset == other.offset
 		elif self.type & RegisterValueType.ConstantDataValue == RegisterValueType.ConstantDataValue:
 			return self.value == other.value and self._size == other._size
 		elif self.type in [RegisterValueType.SignedRangeValue, RegisterValueType.UnsignedRangeValue]:
@@ -422,6 +457,11 @@ class PossibleValueSet:
 		elif self.type == RegisterValueType.ConstantPointerValue:
 			result.value = self.value
 		elif self.type == RegisterValueType.StackFrameOffset:
+			result.offset = self.offset
+		elif self.type == RegisterValueType.ResultPointerValue:
+			result.value = self.offset
+		elif self.type == RegisterValueType.ParameterPointerValue:
+			result.value = self.value
 			result.offset = self.offset
 		elif self.type & RegisterValueType.ConstantDataValue == RegisterValueType.ConstantDataValue:
 			result.value = self.value
@@ -555,6 +595,39 @@ class PossibleValueSet:
 		"""
 		result = PossibleValueSet()
 		result._type = RegisterValueType.StackFrameOffset
+		result._offset = offset
+		return result
+
+	@staticmethod
+	def result_pointer(offset: int) -> 'PossibleValueSet':
+		"""
+		Create a PossibleValueSet object for a pointer to the return value when the return value
+		is stored at an unknown location in memory. This is typically used for calling conventions
+		that pass in a pointer to the storage location for the return value.
+
+		:param int offset: Integer value of the offset
+		:rtype: PossibleValueSet
+		"""
+		result = PossibleValueSet()
+		result._type = RegisterValueType.ResultPointerValue
+		result._value = offset
+		return result
+
+	@staticmethod
+	def parameter_pointer(idx: int, offset: int) -> 'PossibleValueSet':
+		"""
+		Create a PossibleValueSet object for a pointer to a parameter when the parameter is
+		stored at an unknown location in memory. This is typically used for calling conventions
+		that pass in a pointer to the storage location for parameters (usually larger than
+		can be held in a register).
+
+		:param int idx: Index of the parameter
+		:param int offset: Integer value of the offset
+		:rtype: PossibleValueSet
+		"""
+		result = PossibleValueSet()
+		result._type = RegisterValueType.ParameterPointerValue
+		result._value = idx
 		result._offset = offset
 		return result
 
@@ -1141,6 +1214,53 @@ class ParameterVariables:
 	@property
 	def vars(self) -> List['Variable']:
 		return self._vars
+
+	@property
+	def confidence(self) -> int:
+		return self._confidence
+
+	@property
+	def function(self) -> Optional['binaryninja.function.Function']:
+		return self._func
+
+
+@decorators.passive
+class ParameterLocations:
+	def __init__(
+		self, location_list: List['types.ValueLocation'], confidence: int = core.max_confidence,
+		func: Optional['binaryninja.function.Function'] = None
+	):
+		self._locations = location_list
+		self._confidence = confidence
+		self._func = func
+
+	def __repr__(self):
+		return f"<ParameterLocations: {str(self._locations)}>"
+
+	def __len__(self):
+		return len(self._vars)
+
+	def __iter__(self) -> Generator['types.ValueLocation', None, None]:
+		for location in self._locations:
+			yield location
+
+	def __eq__(self, other) -> bool:
+		return (self._locations, self._confidence, self._func) == (other._locations, other._confidence, other._func)
+
+	def __getitem__(self, idx) -> 'types.ValueLocation':
+		return self._locations[idx]
+
+	def __setitem__(self, idx: int, value: 'types.ValueLocation'):
+		self._locations[idx] = value
+		if self._func is not None:
+			self._func.parameter_locations = self
+
+	def with_confidence(self, confidence: int) -> 'ParameterLocations':
+		return ParameterLocations(list(self._locations), confidence, self._func)
+
+	@property
+	def locations(self) -> List['types.ValueLocation']:
+		return self._locations
 
 	@property
 	def confidence(self) -> int:

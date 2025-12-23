@@ -680,6 +680,7 @@ impl MediumLevelILInstruction {
             MLIL_TRAP => Op::Trap(Trap {
                 vector: op.operands[0],
             }),
+            MLIL_BLOCK_TO_EXPAND => Op::NotYetImplemented,
         };
 
         Self {
