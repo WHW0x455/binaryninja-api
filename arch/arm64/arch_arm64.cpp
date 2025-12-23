@@ -2648,6 +2648,209 @@ class Arm64CallingConvention : public CallingConvention
 
 
 	virtual uint32_t GetFloatReturnValueRegister() override { return REG_V0; }
+
+
+	ValueLocation GetReturnValueLocation(const ReturnValue& returnValue) override
+	{
+		if (returnValue.type->GetWidth() <= 8)
+			return Variable(RegisterVariableSourceType, 0, REG_X0);
+
+		if (returnValue.type->GetWidth() <= 16)
+		{
+			return ValueLocation({
+				ValueLocationComponent(Variable(RegisterVariableSourceType, 0, REG_X0), 0, 8),
+				ValueLocationComponent(
+					Variable(RegisterVariableSourceType, 0, REG_X1), 8, returnValue.type->GetWidth() - 8),
+			});
+		}
+
+		return ValueLocation({ValueLocationComponent(
+			Variable(RegisterVariableSourceType, 0, REG_X8), 0, returnValue.type->GetWidth(), true)});
+	}
+
+
+	virtual bool AreStackParametersNaturallyAligned()
+	{
+		return false;
+	}
+
+
+	vector<ValueLocation> GetParameterLocations(const std::optional<ValueLocation>& returnValue,
+		const vector<FunctionParameter>& params, const std::optional<set<uint32_t>>& permittedRegs) override
+	{
+		vector<ValueLocation> result;
+		result.reserve(params.size());
+
+		vector<uint32_t> intArgs = GetIntegerArgumentRegisters();
+		vector<uint32_t> floatArgs = GetFloatArgumentRegisters();
+
+		auto intArgIter = intArgs.begin();
+		auto floatArgIter = floatArgs.begin();
+		int64_t stackOffset = 0;
+
+		for (auto& param : params)
+		{
+			size_t width = param.type->GetWidth();
+
+			if (!param.defaultLocation)
+			{
+				// Parameter not storage in a normal location, use custom variable
+				result.push_back(param.location);
+				for (auto& component : param.location.components)
+				{
+					if (component.indirect)
+						continue;
+
+					if (component.variable.type == RegisterVariableSourceType)
+					{
+						// If non-default location matches the next register in the register parameter
+						// lists, advance the iterators. It may just be a type mismatch, and we still
+						// want to maintain the state for future parameters.
+						if (intArgIter != intArgs.end() && *intArgIter == component.variable.storage)
+							intArgIter++;
+						else if (floatArgIter != floatArgs.end() && *floatArgIter == component.variable.storage)
+							floatArgIter++;
+					}
+					else if (component.variable.type == StackVariableSourceType
+						&& component.variable.storage >= stackOffset)
+					{
+						// Adjust next automatic stack location to after this one
+						stackOffset = component.variable.storage;
+						if (width < 8)
+							width = 8;
+						else if ((width % 8) != 0)
+							width += 8 - (width % 8);
+						stackOffset += width;
+					}
+				}
+				continue;
+			}
+
+			bool indirect = false;
+			size_t finalWidth = width;
+			if (width > 16)
+			{
+				indirect = true;
+				finalWidth = 8;
+			}
+
+			if (finalWidth <= 8)
+			{
+				if (!indirect && param.type->IsFloat())
+				{
+					if (permittedRegs.has_value() && floatArgIter != floatArgs.end()
+						&& permittedRegs.value().count(*floatArgIter) == 0)
+					{
+						// Disallowed register parameter, start spilling to stack. This is used in calling
+						// conventions that place all variable argument parameters on the stack.
+						floatArgIter = floatArgs.end();
+					}
+					else if (floatArgIter != floatArgs.end())
+					{
+						BNRegisterInfo regInfo = GetArchitecture()->GetRegisterInfo(*floatArgIter);
+						if (finalWidth <= regInfo.size)
+						{
+							result.emplace_back(RegisterVariableSourceType, 0, *floatArgIter);
+							floatArgIter++;
+							continue;
+						}
+					}
+				}
+				else
+				{
+					if (permittedRegs.has_value() && intArgIter != intArgs.end()
+						&& permittedRegs.value().count(*intArgIter) == 0)
+					{
+						// Disallowed register parameter, start spilling to stack. This is used in calling
+						// conventions that place all variable argument parameters on the stack.
+						intArgIter = intArgs.end();
+					}
+					else if (intArgIter != intArgs.end())
+					{
+						BNRegisterInfo regInfo = GetArchitecture()->GetRegisterInfo(*intArgIter);
+						if (finalWidth <= regInfo.size)
+						{
+							if (indirect)
+							{
+								result.push_back(ValueLocation({ValueLocationComponent(
+									Variable(RegisterVariableSourceType, 0, *intArgIter), 0, width, true)}));
+							}
+							else
+							{
+								result.emplace_back(RegisterVariableSourceType, 0, *intArgIter);
+							}
+							intArgIter++;
+							continue;
+						}
+					}
+				}
+			}
+			else if (finalWidth <= 16)
+			{
+				if (permittedRegs.has_value() && intArgIter != intArgs.end()
+					&& permittedRegs.value().count(*intArgIter) == 0)
+				{
+					// Disallowed register parameter, start spilling to stack. This is used in calling
+					// conventions that place all variable argument parameters on the stack.
+					intArgIter = intArgs.end();
+				}
+				else if (intArgIter != intArgs.end())
+				{
+					uint32_t first = *intArgIter;
+					intArgIter++;
+					if (permittedRegs.has_value() && intArgIter != intArgs.end()
+						&& permittedRegs.value().count(*intArgIter) == 0)
+					{
+						// Disallowed register parameter, start spilling to stack. This is used in calling
+						// conventions that place all variable argument parameters on the stack.
+						intArgIter = intArgs.end();
+					}
+					else if (intArgIter != intArgs.end())
+					{
+						uint32_t second = *intArgIter;
+						intArgIter++;
+						result.push_back(
+							ValueLocation({ValueLocationComponent(Variable(RegisterVariableSourceType, 0, first), 0, 8),
+								ValueLocationComponent(
+									Variable(RegisterVariableSourceType, 0, second), 8, finalWidth - 8)}));
+						continue;
+					}
+				}
+			}
+
+			if (indirect)
+			{
+				result.push_back(ValueLocation(
+					{ValueLocationComponent(Variable(StackVariableSourceType, 0, stackOffset), 0, width, true)}));
+			}
+			else
+			{
+				result.emplace_back(StackVariableSourceType, 0, stackOffset);
+			}
+
+			if (AreStackParametersNaturallyAligned() && !indirect)
+			{
+				size_t align = param.type->GetAlignment();
+				if (align == 0)
+					align = 1;
+				if (finalWidth < align)
+					finalWidth = align;
+				else if (finalWidth % align != 0)
+					finalWidth += align - (finalWidth % align);
+				stackOffset += finalWidth;
+			}
+			else
+			{
+				if (finalWidth < 8)
+					finalWidth = 8;
+				else if ((finalWidth % 8) != 0)
+					finalWidth += 8 - (finalWidth % 8);
+				stackOffset += finalWidth;
+			}
+		}
+
+		return result;
+	}
 };
 
 
@@ -2662,6 +2865,12 @@ public:
 	virtual bool AreArgumentRegistersUsedForVarArgs() override
 	{
 		return false;
+	}
+
+
+	virtual bool AreStackParametersNaturallyAligned() override
+	{
+		return true;
 	}
 };
 
