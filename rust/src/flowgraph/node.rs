@@ -1,13 +1,15 @@
 use crate::architecture::BranchType;
 use crate::basic_block::{BasicBlock, BlockContext};
 use crate::disassembly::DisassemblyTextLine;
-use crate::flowgraph::edge::{EdgeStyle, FlowGraphEdge};
+use crate::flowgraph::edge::{EdgeStyle, FlowGraphEdge, Point};
 use crate::flowgraph::FlowGraph;
 use crate::function::HighlightColor;
 use crate::rc::{Array, CoreArrayProvider, CoreArrayProviderInner, Guard, Ref, RefCountable};
 use binaryninjacore_sys::*;
 use std::fmt::{Debug, Formatter};
+use std::hash::Hash;
 
+#[repr(transparent)]
 #[derive(PartialEq, Eq, Hash)]
 pub struct FlowGraphNode {
     pub(crate) handle: *mut BNFlowGraphNode,
@@ -69,6 +71,13 @@ impl FlowGraphNode {
         (pos_x, pos_y)
     }
 
+    /// Returns the size of the node in width, height form.
+    pub fn size(&self) -> (i32, i32) {
+        let w = unsafe { BNGetFlowGraphNodeWidth(self.handle) };
+        let h = unsafe { BNGetFlowGraphNodeHeight(self.handle) };
+        (w, h)
+    }
+
     /// Sets the graph position of the node.
     pub fn set_position(&self, x: i32, y: i32) {
         unsafe { BNFlowGraphNodeSetX(self.handle, x) };
@@ -108,6 +117,22 @@ impl FlowGraphNode {
         unsafe {
             BNAddFlowGraphNodeOutgoingEdge(self.handle, type_, target.handle, edge_style.into())
         }
+    }
+
+    pub fn set_outgoing_edge_points(&self, edge_idx: usize, points: &[Point]) {
+        let mut points_raw: Vec<BNPoint> = points.into_iter().map(|p| (*p).into()).collect();
+        unsafe {
+            BNFlowGraphNodeSetOutgoingEdgePoints(
+                self.handle,
+                edge_idx,
+                points_raw.as_mut_ptr(),
+                points.len(),
+            )
+        };
+    }
+
+    pub fn set_visibility_region(&self, x: i32, y: i32, w: i32, h: i32) {
+        unsafe { BNFlowGraphNodeSetVisibilityRegion(self.handle, x, y, w, h) };
     }
 }
 
