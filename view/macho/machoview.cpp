@@ -446,13 +446,14 @@ MachOHeader MachoView::HeaderForAddress(BinaryView* data, uint64_t address, bool
 							sect.flags,
 							sect.reserved1,
 							sect.reserved2);
-						if (!strncmp(sect.sectname, "__mod_init_func", 15) || !strncmp(sect.sectname, "__init_offsets", 14))
+
+						if ((sect.flags & SECTION_TYPE) == S_INIT_FUNC_OFFSETS || (sect.flags & SECTION_TYPE) == S_MOD_INIT_FUNC_POINTERS)
 							header.moduleInitSections.push_back(sect);
 						if ((sect.flags & (S_ATTR_SELF_MODIFYING_CODE | S_SYMBOL_STUBS)) == (S_ATTR_SELF_MODIFYING_CODE | S_SYMBOL_STUBS))
 							header.symbolStubSections.push_back(sect);
-						if ((sect.flags & S_NON_LAZY_SYMBOL_POINTERS) == S_NON_LAZY_SYMBOL_POINTERS)
+						if ((sect.flags & SECTION_TYPE) == S_NON_LAZY_SYMBOL_POINTERS)
 							header.symbolPointerSections.push_back(sect);
-						if ((sect.flags & S_LAZY_SYMBOL_POINTERS) == S_LAZY_SYMBOL_POINTERS)
+						if ((sect.flags & SECTION_TYPE) == S_LAZY_SYMBOL_POINTERS)
 							header.symbolPointerSections.push_back(sect);
 				}
 				header.segments.push_back(segment64);
@@ -549,13 +550,14 @@ MachOHeader MachoView::HeaderForAddress(BinaryView* data, uint64_t address, bool
 							sect.reserved1,
 							sect.reserved2,
 							sect.reserved3);
-						if (!strncmp(sect.sectname, "__mod_init_func", 15) || !strncmp(sect.sectname, "__init_offsets", 14))
+
+						if ((sect.flags & SECTION_TYPE) == S_INIT_FUNC_OFFSETS || (sect.flags & SECTION_TYPE) == S_MOD_INIT_FUNC_POINTERS)
 							header.moduleInitSections.push_back(sect);
 						if ((sect.flags & (S_ATTR_SELF_MODIFYING_CODE | S_SYMBOL_STUBS)) == (S_ATTR_SELF_MODIFYING_CODE | S_SYMBOL_STUBS))
 							header.symbolStubSections.push_back(sect);
-						if ((sect.flags & S_NON_LAZY_SYMBOL_POINTERS) == S_NON_LAZY_SYMBOL_POINTERS)
+						if ((sect.flags & SECTION_TYPE) == S_NON_LAZY_SYMBOL_POINTERS)
 							header.symbolPointerSections.push_back(sect);
-						if ((sect.flags & S_LAZY_SYMBOL_POINTERS) == S_LAZY_SYMBOL_POINTERS)
+						if ((sect.flags & SECTION_TYPE) == S_LAZY_SYMBOL_POINTERS)
 							header.symbolPointerSections.push_back(sect);
 				}
 				header.segments.push_back(segment64);
@@ -1938,7 +1940,7 @@ bool MachoView::InitializeHeader(MachOHeader& header, bool isMainHeader, uint64_
 		size_t i = 0;
 		reader.Seek(moduleInitSection.offset);
 
-		if (!strncmp(moduleInitSection.sectname, "__mod_init_func", 15))
+		if ((moduleInitSection.flags & SECTION_TYPE) == S_MOD_INIT_FUNC_POINTERS)
 		{
 			// The mod_init section contains a list of function pointers called at initialization
 			// if we don't have a defined entrypoint then use the first one in the list as the entrypoint
@@ -1964,7 +1966,7 @@ bool MachoView::InitializeHeader(MachOHeader& header, bool isMainHeader, uint64_
 				DefineAutoSymbol(symbol);
 			}
 		}
-		else if (!strncmp(moduleInitSection.sectname, "__init_offsets", 14))
+		else if ((moduleInitSection.flags & SECTION_TYPE) == S_INIT_FUNC_OFFSETS)
 		{
 			// The init_offsets section contains a list of 32-bit RVA offsets to functions called at initialization
 			// if we don't have a defined entrypoint then use the first one in the list as the entrypoint
